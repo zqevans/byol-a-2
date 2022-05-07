@@ -1,5 +1,6 @@
 program: train.py
 method: bayes
+name: drum-search
 metric:
   goal: minimize
   name: loss
