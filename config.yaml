@@ -2,7 +2,7 @@ project_name: 'byol-a-2'
 # Unit duration in seconds for one audio segment.
 unit_sec: 0.25
 # FFT parameters.
-sample_rate: 44100
+sample_rate: 48000
 n_fft: 1024
 win_length: 1024
 hop_length: 160
