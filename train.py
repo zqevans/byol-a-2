@@ -133,7 +133,7 @@ def main(audio_dir, config_path='config.yaml', d=None, epochs=None, resume=None)
     wandb_logger.watch(model)
     
     ckpt_callback = pl.callbacks.ModelCheckpoint(
-        every_n_train_steps=100, save_top_k=-1)
+        every_n_train_steps=2000, save_top_k=-1)
 
     exc_callback = ExceptionCallback()
 
@@ -144,7 +144,7 @@ def main(audio_dir, config_path='config.yaml', d=None, epochs=None, resume=None)
         weights_summary=None,
         logger=wandb_logger,
         log_every_n_steps=1,
-        accumulate_grad_batches=16,
+        accumulate_grad_batches=8,
         callbacks=[ckpt_callback, exc_callback]
     )
 
