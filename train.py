@@ -103,7 +103,7 @@ def main(audio_dir, config_path='config.yaml', d=None, epochs=None, resume=None)
     ds = WaveInLMSOutDataset(cfg, files, labels=None, tfms=tfms)
 
     dl = DataLoader(ds, batch_size=cfg.bs,
-                num_workers=multiprocessing.cpu_count(),
+                num_workers=cfg.num_workers,
                 pin_memory=True, shuffle=True,)
 
     print(f'Dataset: {len(files)} .wav files from {audio_dir}')
