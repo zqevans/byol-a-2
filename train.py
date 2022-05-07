@@ -30,6 +30,7 @@ from byol_a.dataset import WaveInLMSOutDataset
 import multiprocessing
 import pytorch_lightning as pl
 import fire
+import wandb
 
 
 class AugmentationModule:
@@ -95,6 +96,10 @@ def main(audio_dir, config_path='config.yaml', d=None, epochs=None, resume=None)
     logger = get_logger(__name__)
     logger.info(cfg)
     seed_everything(cfg.seed)
+
+    run = wandb.init(config=cfg, project=cfg.project_name, entity="zqevans")
+    cfg = run.config
+
     # Data preparation
     files = sorted(Path(audio_dir).glob('**/*.wav'))
 
@@ -114,8 +119,8 @@ def main(audio_dir, config_path='config.yaml', d=None, epochs=None, resume=None)
             f'-rs{cfg.seed}')
 
     print(f'Training {name}...')
-    # Model
 
+    # Model
     model = AudioNTT2020(n_mels=cfg.n_mels, d=cfg.feature_d)
 
     if cfg.resume is not None:
@@ -129,11 +134,10 @@ def main(audio_dir, config_path='config.yaml', d=None, epochs=None, resume=None)
         moving_average_decay=cfg.ema_decay,
     )
 
+
     wandb_logger = pl.loggers.WandbLogger(project=cfg.project_name)
-    wandb_logger.init(cfg)
     wandb_logger.watch(model)
 
-    cfg = wandb_logger.config
     
     ckpt_callback = pl.callbacks.ModelCheckpoint(
         every_n_train_steps=2000, save_top_k=-1)
