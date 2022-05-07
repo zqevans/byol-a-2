@@ -144,7 +144,7 @@ def main(audio_dir, config_path='config.yaml', d=None, epochs=None, resume=None)
         weights_summary=None,
         logger=wandb_logger,
         log_every_n_steps=1,
-        accumulate_grad_batches=8,
+        accumulate_grad_batches=4,
         callbacks=[ckpt_callback, exc_callback]
     )
 

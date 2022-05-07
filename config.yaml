@@ -2,7 +2,7 @@ project_name: 'byol-a-2'
 # Unit duration in seconds for one audio segment.
 unit_sec: 0.25
 # FFT parameters.
-sample_rate: 48000
+sample_rate: 44100
 n_fft: 1024
 win_length: 1024
 hop_length: 160
@@ -17,7 +17,7 @@ proj_dim: 4096
 ema_decay: 0.99
 # Training parameters.
 seed: 42
-bs: 256
+bs: 32
 lr: 0.0003
 epochs: 10000
 gpus: 8
@@ -25,6 +25,6 @@ num_workers: 8
 # Weight pathname for resuming training.
 resume: 
 # Shape of log-mel spectrogram [Frequency bins, Time bins].
-shape: [64, 128]
+shape: [64, 96]
 # Folder to store trained weight files.
 checkpoint_folder: checkpoints
