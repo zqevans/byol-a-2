@@ -31,7 +31,7 @@ class WaveInLMSOutDataset(Dataset):
         use_librosa: True if using librosa for converting audio to log-mel spectrogram (LMS).
     """
 
-    def __init__(self, cfg, audio_files, labels, tfms, use_librosa=False):
+    def __init__(self, cfg, audio_files, labels, tfms, use_librosa=True):
         # argment check
         assert (labels is None) or (len(audio_files) == len(labels)), 'The number of audio files and labels has to be the same.'
         super().__init__()
@@ -59,13 +59,14 @@ class WaveInLMSOutDataset(Dataset):
             f_max=cfg.f_max,
             power=2,
         )
+        self.num_files = len(self.files)
 
     def __len__(self):
-        return len(self.files)
+        return len(self.files) * 20
 
     def __getitem__(self, idx):
         # load single channel .wav audio
-        wav, sr = torchaudio.load(self.files[idx])
+        wav, sr = torchaudio.load(self.files[idx % self.num_files])
         assert sr == self.cfg.sample_rate, f'Convert .wav files to {self.cfg.sample_rate} Hz. {self.files[idx]} has {sr} Hz.'
         assert wav.shape[0] == 1, f'Convert .wav files to single channel audio, {self.files[idx]} has {wav.shape[0]} channels.'
         wav = wav[0] # (1, length) -> (length,)

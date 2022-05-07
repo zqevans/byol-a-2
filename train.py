@@ -70,7 +70,7 @@ class BYOLALearner(pl.LightningModule):
         ma, sa = to_np((paired_inputs.mean(), paired_inputs.std()))
 
         loss = self.forward(paired_inputs[:bs], paired_inputs[bs:])
-        for k, v in {'mb': mb, 'sb': sb, 'ma': ma, 'sa': sa}.items():
+        for k, v in {'loss': loss, 'mb': mb, 'sb': sb, 'ma': ma, 'sa': sa}.items():
             self.log(k, float(v), prog_bar=True, on_step=False, on_epoch=True)
         return loss
 
