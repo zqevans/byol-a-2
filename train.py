@@ -110,7 +110,7 @@ if __name__ == '__main__':
     cfg = load_yaml_config('config.yaml')
 
     # Merge the args
-    cfg = cfg.update(args)
+    cfg = {**cfg, **args}
 
     with wandb.init(config=cfg, project=cfg.project_name, entity="zqevans") as run:
         # Essentials
