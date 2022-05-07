@@ -28,3 +28,5 @@ resume:
 shape: [64, 96]
 # Folder to store trained weight files.
 checkpoint_folder: checkpoints
+# Folder containing the preprocessed training data
+audio_dir: ../preprocessed

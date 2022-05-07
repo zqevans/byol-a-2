@@ -27,6 +27,7 @@ from byol_a.byol_pytorch import BYOL
 from byol_a.models import AudioNTT2020
 from byol_a.augmentations import (RandomResizeCrop, MixupBYOLA, RunningNorm, NormalizeBatch)
 from byol_a.dataset import WaveInLMSOutDataset
+from functools import partial
 import multiprocessing
 import pytorch_lightning as pl
 import fire
@@ -86,12 +87,8 @@ class ExceptionCallback(pl.Callback):
         print(f'{type(err).__name__}: {err}', file=sys.stderr)
 
 
-def main(audio_dir, config_path='config.yaml', d=None, epochs=None, resume=None) -> None:
-    cfg = load_yaml_config(config_path)
-    # Override configs
-    cfg.feature_d = d or cfg.feature_d
-    cfg.epochs = epochs or cfg.epochs
-    cfg.resume = resume or cfg.resume
+def train(audio_dir, cfg):
+    
     # Essentials
     logger = get_logger(__name__)
     logger.info(cfg)
@@ -159,11 +156,27 @@ def main(audio_dir, config_path='config.yaml', d=None, epochs=None, resume=None)
     if trainer.interrupted:
         logger.info('Terminated.')
         exit(0)
+
+def main(audio_dir, config_path='config.yaml', sweep_config_path='sweep.yaml', d=None, epochs=None, resume=None) -> None:
+    
+    cfg = load_yaml_config(config_path)
+    # Override configs
+    cfg.feature_d = d or cfg.feature_d
+    cfg.epochs = epochs or cfg.epochs
+    cfg.resume = resume or cfg.resume
+
+    sweep_config = load_yaml_config(sweep_config_path)
+    sweep_id = wandb.sweep(sweep_config)
+
+    train_fn = partial(train, audio_dir, cfg)
+
+    wandb.agent(sweep_id, function=train_fn, entity="zqevans", project=cfg.project_name)
+
     # Saving trained weight.
-    to_file = Path(cfg.checkpoint_folder)/(name+'.pth')
-    to_file.parent.mkdir(exist_ok=True, parents=True)
-    torch.save(model.state_dict(), to_file)
-    logger.info(f'Saved weight as {to_file}')
+    # to_file = Path(cfg.checkpoint_folder)/(name+'.pth')
+    # to_file.parent.mkdir(exist_ok=True, parents=True)
+    # torch.save(model.state_dict(), to_file)
+    # logger.info(f'Saved weight as {to_file}')
 
 
 if __name__ == '__main__':
