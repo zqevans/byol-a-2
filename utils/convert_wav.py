@@ -47,6 +47,8 @@ def _converter_worker(args):
 def convert_wav(from_dir, to_dir, config_path='config.yaml', verbose=True) -> None:
     cfg = load_yaml_config(config_path)
     files = [str(f).replace(from_dir, '') for f in Path(from_dir).glob('**/*.wav')]
+    files += [str(f).replace(from_dir, '') for f in Path(from_dir).glob('**/*.flac')]
+    files += [str(f).replace(from_dir, '') for f in Path(from_dir).glob('**/*.mp3')]
     files = [f[1:] if f[0] == '/' else f for f in files]
     print(f'Processing {len(files)} files...')
     assert len(files) > 0
