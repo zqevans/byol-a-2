@@ -80,6 +80,10 @@ class BYOLALearner(pl.LightningModule):
     def on_before_zero_grad(self, _):
         self.learner.update_moving_average()
 
+class ExceptionCallback(pl.Callback):
+    def on_exception(self, trainer, module, err):
+        print(f'{type(err).__name__}: {err}', file=sys.stderr)
+
 
 def main(audio_dir, config_path='config.yaml', d=None, epochs=None, resume=None) -> None:
     cfg = load_yaml_config(config_path)
@@ -109,13 +113,14 @@ def main(audio_dir, config_path='config.yaml', d=None, epochs=None, resume=None)
             f'-e{cfg.epochs}-bs{cfg.bs}-lr{str(cfg.lr)[2:]}'
             f'-rs{cfg.seed}')
 
-    logger.info(f'Training {name}...')
+    print(f'Training {name}...')
     # Model
 
     model = AudioNTT2020(n_mels=cfg.n_mels, d=cfg.feature_d)
 
     if cfg.resume is not None:
         model.load_weight(cfg.resume)
+    
     # Training
     learner = BYOLALearner(model, cfg.lr, cfg.shape,
         hidden_layer=-1,
@@ -123,7 +128,25 @@ def main(audio_dir, config_path='config.yaml', d=None, epochs=None, resume=None)
         projection_hidden_size=cfg.proj_dim,
         moving_average_decay=cfg.ema_decay,
     )
-    trainer = pl.Trainer(gpus=cfg.gpus, max_epochs=cfg.epochs, weights_summary=None)
+
+    wandb_logger = pl.loggers.WandbLogger(project=cfg.project_name)
+    wandb_logger.watch(model)
+    
+    ckpt_callback = pl.callbacks.ModelCheckpoint(
+        every_n_train_steps=100, save_top_k=-1)
+
+    exc_callback = ExceptionCallback()
+
+    trainer = pl.Trainer(
+        gpus=cfg.gpus, 
+        strategy='ddp',
+        max_epochs=cfg.epochs, 
+        weights_summary=None,
+        logger=wandb_logger,
+        log_every_n_steps=1,
+        callbacks=[ckpt_callback, exc_callback]
+    )
+
     trainer.fit(learner, dl)
     if trainer.interrupted:
         logger.info('Terminated.')

@@ -15,6 +15,7 @@ setup(
         "fire",
         "easydict",
         "pandas",
-        "tqdm"
+        "tqdm",
+        "wandb"
     ],
 )

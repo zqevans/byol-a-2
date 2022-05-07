@@ -1,3 +1,4 @@
+project_name: 'byol-a-2'
 # Unit duration in seconds for one audio segment.
 unit_sec: 0.25
 # FFT parameters.
@@ -18,7 +19,7 @@ ema_decay: 0.99
 seed: 42
 bs: 256
 lr: 0.0003
-epochs: 100
+epochs: 10000
 gpus: 8
 num_workers: 8
 # Weight pathname for resuming training.
