@@ -110,7 +110,13 @@ if __name__ == '__main__':
     cfg = load_yaml_config('config.yaml')
 
     # Merge the args
-    cfg = cfg.update(vars(args))
+    cfg.unit_sec = args.unit_sec or cfg.unit_sec
+    cfg.feature_d = args.feature_d or cfg.feature_d
+    cfg.proj_dim = args.proj_dim or cfg.proj_dim
+    cfg.n_mels = args.n_mels or cfg.n_mels
+    cfg.n_fft = args.n_fft or cfg.n_fft
+    cfg.accum_batch = args.accum_batch or cfg.accum_batch
+    cfg.batch_size = args.batch_size or cfg.batch_size
 
     with wandb.init(config=cfg, project=cfg.project_name, entity="zqevans") as run:
         # Essentials
