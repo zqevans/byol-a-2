@@ -62,7 +62,7 @@ class WaveInLMSOutDataset(Dataset):
         self.num_files = len(self.files)
 
     def __len__(self):
-        return len(self.files) * 20
+        return len(self.files) * 5
 
     def __getitem__(self, idx):
         # load single channel .wav audio
