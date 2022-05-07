@@ -104,7 +104,7 @@ def main(audio_dir, config_path='config.yaml', d=None, epochs=None, resume=None)
 
     dl = DataLoader(ds, batch_size=cfg.bs,
                 num_workers=cfg.num_workers,
-                pin_memory=True, shuffle=True,)
+                pin_memory=True, shuffle=True, persistent_workers=True)
 
     print(f'Dataset: {len(files)} .wav files from {audio_dir}')
 
@@ -130,7 +130,10 @@ def main(audio_dir, config_path='config.yaml', d=None, epochs=None, resume=None)
     )
 
     wandb_logger = pl.loggers.WandbLogger(project=cfg.project_name)
+    wandb_logger.init(cfg)
     wandb_logger.watch(model)
+
+    cfg = wandb_logger.config
     
     ckpt_callback = pl.callbacks.ModelCheckpoint(
         every_n_train_steps=2000, save_top_k=-1)
