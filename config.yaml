@@ -19,13 +19,14 @@ ema_decay: 0.99
 seed: 42
 batch_size: 32
 lr: 0.0003
-epochs: 10000
+epochs: 100
 gpus: 8
 num_workers: 8
 # Weight pathname for resuming training.
 resume: 
 # Shape of log-mel spectrogram [Frequency bins, Time bins].
-shape: [64, 96]
+freq_bins: 64
+time_bins: 96
 # Folder to store trained weight files.
 checkpoint_folder: checkpoints
 # Folder containing the preprocessed training data

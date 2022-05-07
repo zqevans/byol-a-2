@@ -97,6 +97,8 @@ if __name__ == '__main__':
     p.add_argument('--unit_sec', type=float, help='total number of seconds to train on')
 
     p.add_argument('--feature_d', type=int, help='feature dimensions')
+    p.add_argument('--freq_bins', type=int)
+    p.add_argument('--time_bins', type=int)
     p.add_argument('--accum_batch', type=int)
     p.add_argument('--batch_size', type=int)
 
@@ -107,6 +109,8 @@ if __name__ == '__main__':
     # Merge the args
     cfg.unit_sec = args.unit_sec or cfg.unit_sec
     cfg.feature_d = args.feature_d or cfg.feature_d
+    cfg.freq_bins = args.freq_bins or cfg.freq_bins
+    cfg.time_bins = args.time_bins or cfg.time_bins
     cfg.accum_batch = args.accum_batch or cfg.accum_batch
     cfg.batch_size = args.batch_size or cfg.batch_size
 
@@ -132,7 +136,7 @@ if __name__ == '__main__':
         print(f'Dataset: {len(files)} .wav files from {cfg.audio_dir}')
 
         # Training preparation
-        name = (f'BYOLA-2-Drums-d{cfg.feature_d}s{cfg.shape[0]}x{cfg.shape[1]}-{get_timestamp()}'
+        name = (f'BYOLA-2-Drums-d{cfg.feature_d}s{cfg.freq_bins}x{cfg.time_bins}-{get_timestamp()}'
                  f'-e{cfg.epochs}-bs{cfg.batch_size}-lr{str(cfg.lr)[2:]}'
                   f'-rs{cfg.seed}')
 
@@ -145,7 +149,7 @@ if __name__ == '__main__':
             model.load_weight(cfg.resume)
 
         # Training
-        learner = BYOLALearner(model, cfg.lr, cfg.shape,
+        learner = BYOLALearner(model, cfg.lr, (cfg.freq_bins, cfg.time_bins),
                                 hidden_layer=-1,
                                 projection_size=cfg.proj_size,
                                 projection_hidden_size=cfg.proj_dim,
