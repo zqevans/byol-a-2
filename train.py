@@ -105,12 +105,12 @@ if __name__ == '__main__':
     p.add_argument('--accum-batch', type=int)
     p.add_argument('--batch-size', type=int)
 
-    args = p.parse_args
+    args = p.parse_args()
 
     cfg = load_yaml_config('config.yaml')
 
     # Merge the args
-    cfg = {**cfg, **args}
+    cfg = cfg.update(args)
 
     with wandb.init(config=cfg, project=cfg.project_name, entity="zqevans") as run:
         # Essentials
