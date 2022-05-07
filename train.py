@@ -35,13 +35,13 @@ import fire
 class AugmentationModule:
     """BYOL-A augmentation module example, the same parameter with the paper."""
 
-    def __init__(self, size, epoch_samples, log_mixup_exp=True, mixup_ratio=0.4):
+    def __init__(self, epoch_samples, log_mixup_exp=True, mixup_ratio=0.4):
         self.train_transform = nn.Sequential(
             MixupBYOLA(ratio=mixup_ratio, log_mixup_exp=log_mixup_exp),
             RandomResizeCrop(virtual_crop_scale=(1.0, 1.5), freq_scale=(0.6, 1.5), time_scale=(0.6, 1.5)),
         )
         self.pre_norm = RunningNorm(epoch_samples=epoch_samples)
-        print('Augmentatoions:', self.train_transform)
+        print('Augmentations:', self.train_transform)
 
     def __call__(self, x):
         x = self.pre_norm(x)
@@ -92,9 +92,9 @@ def main(audio_dir, config_path='config.yaml', d=None, epochs=None, resume=None)
     logger.info(cfg)
     seed_everything(cfg.seed)
     # Data preparation
-    files = sorted(Path(audio_dir).glob('*.wav'))
+    files = sorted(Path(audio_dir).glob('**/*.wav'))
 
-    tfms = AugmentationModule((cfg.shape[0], cfg.shape[1]), 2 * len(files))
+    tfms = AugmentationModule(2 * len(files))
     
     ds = WaveInLMSOutDataset(cfg, files, labels=None, tfms=tfms)
 
@@ -102,7 +102,7 @@ def main(audio_dir, config_path='config.yaml', d=None, epochs=None, resume=None)
                 num_workers=multiprocessing.cpu_count(),
                 pin_memory=True, shuffle=True,)
 
-    logger.info(f'Dataset: {len(files)} .wav files from {audio_dir}')
+    print(f'Dataset: {len(files)} .wav files from {audio_dir}')
 
     # Training preparation
     name = (f'BYOLA-2-Drums-d{cfg.feature_d}s{cfg.shape[0]}x{cfg.shape[1]}-{get_timestamp()}'
@@ -113,7 +113,7 @@ def main(audio_dir, config_path='config.yaml', d=None, epochs=None, resume=None)
     # Model
 
     model = AudioNTT2020(n_mels=cfg.n_mels, d=cfg.feature_d)
-    
+
     if cfg.resume is not None:
         model.load_weight(cfg.resume)
     # Training
