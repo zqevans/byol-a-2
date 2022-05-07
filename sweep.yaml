@@ -19,25 +19,6 @@ parameters:
       - 2048
       - 1024
     distribution: categorical
-  proj_dim:
-    values:
-      - 4096
-      - 2048
-    distribution: categorical
-  n_mels:
-    values:
-      - 128
-      - 96
-      - 64
-      - 48
-      - 32
-    distribution: categorical
-  n_fft:
-    values:
-      - 512
-      - 1024
-      - 2048
-    distribution: categorical
   accum_batch:
     values:
       - 1

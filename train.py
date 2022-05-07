@@ -97,11 +97,6 @@ if __name__ == '__main__':
     p.add_argument('--unit_sec', type=float, help='total number of seconds to train on')
 
     p.add_argument('--feature_d', type=int, help='feature dimensions')
-
-    p.add_argument('--proj_dim', type=int, help="projection dimensions")
-
-    p.add_argument('--n_mels', type=int)
-    p.add_argument('--n_fft', type=int)
     p.add_argument('--accum_batch', type=int)
     p.add_argument('--batch_size', type=int)
 
