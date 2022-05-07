@@ -88,74 +88,74 @@ class ExceptionCallback(pl.Callback):
 
 
 def train(audio_dir, cfg):
-    
-    # Essentials
-    logger = get_logger(__name__)
-    logger.info(cfg)
-    seed_everything(cfg.seed)
+    with wandb.init(config=cfg, project=cfg.project_name, entity="zqevans") as run:
+        # Essentials
+        logger = get_logger(__name__)
+        logger.info(cfg)
+        seed_everything(cfg.seed)
 
-    run = wandb.init(config=cfg, project=cfg.project_name, entity="zqevans")
-    cfg = run.config
+        
+        cfg = run.config
 
-    # Data preparation
-    files = sorted(Path(audio_dir).glob('**/*.wav'))
+        # Data preparation
+        files = sorted(Path(audio_dir).glob('**/*.wav'))
 
-    tfms = AugmentationModule(2 * len(files))
-    
-    ds = WaveInLMSOutDataset(cfg, files, labels=None, tfms=tfms)
+        tfms = AugmentationModule(2 * len(files))
+        
+        ds = WaveInLMSOutDataset(cfg, files, labels=None, tfms=tfms)
 
-    dl = DataLoader(ds, batch_size=cfg.bs,
-                num_workers=cfg.num_workers,
-                pin_memory=True, shuffle=True, persistent_workers=True)
+        dl = DataLoader(ds, batch_size=cfg.bs,
+                    num_workers=cfg.num_workers,
+                    pin_memory=True, shuffle=True, persistent_workers=True)
 
-    print(f'Dataset: {len(files)} .wav files from {audio_dir}')
+        print(f'Dataset: {len(files)} .wav files from {audio_dir}')
 
-    # Training preparation
-    name = (f'BYOLA-2-Drums-d{cfg.feature_d}s{cfg.shape[0]}x{cfg.shape[1]}-{get_timestamp()}'
-            f'-e{cfg.epochs}-bs{cfg.bs}-lr{str(cfg.lr)[2:]}'
-            f'-rs{cfg.seed}')
+        # Training preparation
+        name = (f'BYOLA-2-Drums-d{cfg.feature_d}s{cfg.shape[0]}x{cfg.shape[1]}-{get_timestamp()}'
+                f'-e{cfg.epochs}-bs{cfg.bs}-lr{str(cfg.lr)[2:]}'
+                f'-rs{cfg.seed}')
 
-    print(f'Training {name}...')
+        print(f'Training {name}...')
 
-    # Model
-    model = AudioNTT2020(n_mels=cfg.n_mels, d=cfg.feature_d)
+        # Model
+        model = AudioNTT2020(n_mels=cfg.n_mels, d=cfg.feature_d)
 
-    if cfg.resume is not None:
-        model.load_weight(cfg.resume)
-    
-    # Training
-    learner = BYOLALearner(model, cfg.lr, cfg.shape,
-        hidden_layer=-1,
-        projection_size=cfg.proj_size,
-        projection_hidden_size=cfg.proj_dim,
-        moving_average_decay=cfg.ema_decay,
-    )
+        if cfg.resume is not None:
+            model.load_weight(cfg.resume)
+        
+        # Training
+        learner = BYOLALearner(model, cfg.lr, cfg.shape,
+            hidden_layer=-1,
+            projection_size=cfg.proj_size,
+            projection_hidden_size=cfg.proj_dim,
+            moving_average_decay=cfg.ema_decay,
+        )
 
 
-    wandb_logger = pl.loggers.WandbLogger(project=cfg.project_name)
-    wandb_logger.watch(model)
+        wandb_logger = pl.loggers.WandbLogger(project=cfg.project_name)
+        wandb_logger.watch(model)
 
-    
-    ckpt_callback = pl.callbacks.ModelCheckpoint(
-        every_n_train_steps=2000, save_top_k=-1)
+        
+        ckpt_callback = pl.callbacks.ModelCheckpoint(
+            every_n_train_steps=2000, save_top_k=-1)
 
-    exc_callback = ExceptionCallback()
+        exc_callback = ExceptionCallback()
 
-    trainer = pl.Trainer(
-        gpus=cfg.gpus, 
-        strategy='ddp',
-        max_epochs=cfg.epochs, 
-        weights_summary=None,
-        logger=wandb_logger,
-        log_every_n_steps=1,
-        accumulate_grad_batches=cfg.accum_batch,
-        callbacks=[ckpt_callback, exc_callback]
-    )
+        trainer = pl.Trainer(
+            gpus=cfg.gpus, 
+            strategy='ddp',
+            max_epochs=cfg.epochs, 
+            weights_summary=None,
+            logger=wandb_logger,
+            log_every_n_steps=1,
+            accumulate_grad_batches=cfg.accum_batch,
+            callbacks=[ckpt_callback, exc_callback]
+        )
 
-    trainer.fit(learner, dl)
-    if trainer.interrupted:
-        logger.info('Terminated.')
-        exit(0)
+        trainer.fit(learner, dl)
+        if trainer.interrupted:
+            logger.info('Terminated.')
+            exit(0)
 
 def main(audio_dir, config_path='config.yaml', sweep_config_path='sweep.yaml', d=None, epochs=None, resume=None) -> None:
     
@@ -166,6 +166,7 @@ def main(audio_dir, config_path='config.yaml', sweep_config_path='sweep.yaml', d
     cfg.resume = resume or cfg.resume
 
     sweep_config = load_yaml_config(sweep_config_path)
+    sweep_config.name = "byol-sweep"
     sweep_id = wandb.sweep(sweep_config)
 
     train_fn = partial(train, audio_dir, cfg)
