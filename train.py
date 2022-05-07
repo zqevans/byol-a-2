@@ -22,15 +22,15 @@ Example of training on FSD50K dataset:
 """
 
 from byol_a.common import (os, sys, np, Path, random, torch, nn, DataLoader,
-     get_logger, load_yaml_config, seed_everything, get_timestamp)
+                           get_logger, load_yaml_config, seed_everything, get_timestamp)
 from byol_a.byol_pytorch import BYOL
 from byol_a.models import AudioNTT2020
-from byol_a.augmentations import (RandomResizeCrop, MixupBYOLA, RunningNorm, NormalizeBatch)
+from byol_a.augmentations import (
+    RandomResizeCrop, MixupBYOLA, RunningNorm, NormalizeBatch)
 from byol_a.dataset import WaveInLMSOutDataset
 from functools import partial
-import multiprocessing
+import argparse
 import pytorch_lightning as pl
-import fire
 import wandb
 
 
@@ -40,7 +40,8 @@ class AugmentationModule:
     def __init__(self, epoch_samples, log_mixup_exp=True, mixup_ratio=0.4):
         self.train_transform = nn.Sequential(
             MixupBYOLA(ratio=mixup_ratio, log_mixup_exp=log_mixup_exp),
-            RandomResizeCrop(virtual_crop_scale=(1.0, 1.5), freq_scale=(0.6, 1.5), time_scale=(0.6, 1.5)),
+            RandomResizeCrop(virtual_crop_scale=(1.0, 1.5),
+                             freq_scale=(0.6, 1.5), time_scale=(0.6, 1.5)),
         )
         self.pre_norm = RunningNorm(epoch_samples=epoch_samples)
         print('Augmentations:', self.train_transform)
@@ -66,7 +67,8 @@ class BYOLALearner(pl.LightningModule):
         def to_np(A): return [a.cpu().numpy() for a in A]
 
         bs = paired_inputs[0].shape[0]
-        paired_inputs = torch.cat(paired_inputs) # [(B,1,F,T), (B,1,F,T)] -> (2*B,1,F,T)
+        # [(B,1,F,T), (B,1,F,T)] -> (2*B,1,F,T)
+        paired_inputs = torch.cat(paired_inputs)
         mb, sb = to_np((paired_inputs.mean(), paired_inputs.std()))
         paired_inputs = self.post_norm(paired_inputs)
         ma, sa = to_np((paired_inputs.mean(), paired_inputs.std()))
@@ -82,38 +84,59 @@ class BYOLALearner(pl.LightningModule):
     def on_before_zero_grad(self, _):
         self.learner.update_moving_average()
 
+
 class ExceptionCallback(pl.Callback):
     def on_exception(self, trainer, module, err):
         print(f'{type(err).__name__}: {err}', file=sys.stderr)
 
 
-def train(audio_dir, cfg):
+if __name__ == '__main__':
+
+    p = argparse.ArgumentParser()
+
+    p.add_argument('--unit-sec', type=float, help='total number of seconds to train on')
+
+    p.add_argument('--feature-d', type=int, help='feature dimensions')
+
+    p.add_argument('--proj_dim', type=int, help="projection dimensions")
+
+    p.add_argument('--n-mels', type=int)
+    p.add_argument('--n-fft', type=int)
+    p.add_argument('--accum-batch', type=int)
+    p.add_argument('--batch-size', type=int)
+
+    args = p.parse_args
+
+    cfg = load_yaml_config('config.yaml')
+
+    # Merge the args
+    cfg = cfg.update(args)
+
     with wandb.init(config=cfg, project=cfg.project_name, entity="zqevans") as run:
         # Essentials
         logger = get_logger(__name__)
         logger.info(cfg)
         seed_everything(cfg.seed)
 
-        
         cfg = run.config
 
         # Data preparation
-        files = sorted(Path(audio_dir).glob('**/*.wav'))
+        files = sorted(Path(cfg.audio_dir).glob('**/*.wav'))
 
         tfms = AugmentationModule(2 * len(files))
-        
+
         ds = WaveInLMSOutDataset(cfg, files, labels=None, tfms=tfms)
 
-        dl = DataLoader(ds, batch_size=cfg.bs,
-                    num_workers=cfg.num_workers,
-                    pin_memory=True, shuffle=True, persistent_workers=True)
+        dl = DataLoader(ds, batch_size=cfg.batch_size,
+                        num_workers=cfg.num_workers,
+                        pin_memory=True, shuffle=True, persistent_workers=True)
 
-        print(f'Dataset: {len(files)} .wav files from {audio_dir}')
+        print(f'Dataset: {len(files)} .wav files from {cfg.audio_dir}')
 
         # Training preparation
         name = (f'BYOLA-2-Drums-d{cfg.feature_d}s{cfg.shape[0]}x{cfg.shape[1]}-{get_timestamp()}'
-                f'-e{cfg.epochs}-bs{cfg.bs}-lr{str(cfg.lr)[2:]}'
-                f'-rs{cfg.seed}')
+                 f'-e{cfg.epochs}-bs{cfg.batch_size}-lr{str(cfg.lr)[2:]}'
+                  f'-rs{cfg.seed}')
 
         print(f'Training {name}...')
 
@@ -122,29 +145,27 @@ def train(audio_dir, cfg):
 
         if cfg.resume is not None:
             model.load_weight(cfg.resume)
-        
+
         # Training
         learner = BYOLALearner(model, cfg.lr, cfg.shape,
-            hidden_layer=-1,
-            projection_size=cfg.proj_size,
-            projection_hidden_size=cfg.proj_dim,
-            moving_average_decay=cfg.ema_decay,
-        )
-
+                                hidden_layer=-1,
+                                projection_size=cfg.proj_size,
+                                projection_hidden_size=cfg.proj_dim,
+                                moving_average_decay=cfg.ema_decay,
+                                )
 
         wandb_logger = pl.loggers.WandbLogger(project=cfg.project_name)
         wandb_logger.watch(model)
 
-        
         ckpt_callback = pl.callbacks.ModelCheckpoint(
             every_n_train_steps=2000, save_top_k=-1)
 
         exc_callback = ExceptionCallback()
 
         trainer = pl.Trainer(
-            gpus=cfg.gpus, 
+            gpus=cfg.gpus,
             strategy='ddp',
-            max_epochs=cfg.epochs, 
+            max_epochs=cfg.epochs,
             weights_summary=None,
             logger=wandb_logger,
             log_every_n_steps=1,
@@ -157,29 +178,8 @@ def train(audio_dir, cfg):
             logger.info('Terminated.')
             exit(0)
 
-def main(audio_dir, config_path='config.yaml', sweep_config_path='sweep.yaml', d=None, epochs=None, resume=None) -> None:
-    
-    cfg = load_yaml_config(config_path)
-    # Override configs
-    cfg.feature_d = d or cfg.feature_d
-    cfg.epochs = epochs or cfg.epochs
-    cfg.resume = resume or cfg.resume
-
-    sweep_config = load_yaml_config(sweep_config_path)
-    sweep_config.name = "byol-sweep"
-    sweep_id = wandb.sweep(sweep_config)
-
-    train_fn = partial(train, audio_dir, cfg)
-
-    wandb.agent(sweep_id, function=train_fn, entity="zqevans", project=cfg.project_name)
-
-    # Saving trained weight.
-    # to_file = Path(cfg.checkpoint_folder)/(name+'.pth')
-    # to_file.parent.mkdir(exist_ok=True, parents=True)
-    # torch.save(model.state_dict(), to_file)
-    # logger.info(f'Saved weight as {to_file}')
-
-
-if __name__ == '__main__':
-    fire.Fire(main)
-
+        # Saving trained weight.
+        # to_file = Path(cfg.checkpoint_folder)/(name+'.pth')
+        # to_file.parent.mkdir(exist_ok=True, parents=True)
+        # torch.save(model.state_dict(), to_file)
+        # logger.info(f'Saved weight as {to_file}')

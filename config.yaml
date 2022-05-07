@@ -17,7 +17,7 @@ proj_dim: 4096
 ema_decay: 0.99
 # Training parameters.
 seed: 42
-bs: 32
+batch_size: 32
 lr: 0.0003
 epochs: 10000
 gpus: 8

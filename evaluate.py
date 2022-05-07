@@ -94,7 +94,7 @@ def get_embeddings(cfg, files, model, norm_stats):
     """
 
     ds = WaveInLMSOutDataset(cfg, files, labels=None, tfms=PrecomputedNorm(norm_stats))
-    dl = torch.utils.data.DataLoader(ds, batch_size=cfg.bs, num_workers=cfg.num_workers,
+    dl = torch.utils.data.DataLoader(ds, batch_size=cfg.batch_size, num_workers=cfg.num_workers,
                                      pin_memory=False, shuffle=False, drop_last=False)
     embs = []
     with torch.no_grad():
